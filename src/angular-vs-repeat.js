@@ -218,7 +218,9 @@
                             $$options = 'vsOptions' in $attrs ? $scope.$eval($attrs.vsOptions) : {},
                             clientSize = $$horizontal ? 'clientWidth' : 'clientHeight',
                             offsetSize = $$horizontal ? 'offsetWidth' : 'offsetHeight',
-                            scrollPos = $$horizontal ? 'scrollLeft' : 'scrollTop';
+                            scrollPos = $$horizontal ? 'scrollLeft' : 'scrollTop',
+                            requestAnimFrameLoopCondition = true;
+
 
                         $scope.totalSize = 0;
                         if (!('vsSize' in $attrs) && 'vsSizeProperty' in $attrs) {
@@ -397,6 +399,7 @@
                         $scope.$on('$destroy', function() {
                             angular.element(window).off('resize', onWindowResize);
                             $scrollParent.off('scroll', scrollHandler);
+                            requestAnimFrameLoopCondition = false;
                         });
 
                         $scope.$on('vsRepeatTrigger', refresh);
@@ -462,15 +465,17 @@
                             }
                             _prevClientSize = ch;
                         }
+                        
+                        function doLoop() {
+                            window.requestAnimationFrame(function() {
+                                if (requestAnimFrameLoopCondition) {
+                                    reinitOnClientHeightChange();                              
+                                    doLoop();
+                                }
+                            });
+                        }
 
-                        $scope.$watch(function() {
-                            if (typeof window.requestAnimationFrame === 'function') {
-                                window.requestAnimationFrame(reinitOnClientHeightChange);
-                            }
-                            else {
-                                reinitOnClientHeightChange();
-                            }
-                        });
+                        doLoop();
 
                         function updateInnerCollection() {
                             var $scrollPosition = getScrollPos($scrollParent[0], scrollPos);
