@@ -202,6 +202,11 @@
                 repeatContainer.empty();
                 return {
                     pre: function($scope, $element, $attrs) {
+
+                        if ($attrs.vsSizeFn){
+                            $scope.vsSizeFn = $scope.$eval($attrs.vsSizeFn);
+                        }
+
                         var repeatContainer = angular.isDefined($attrs.vsRepeatContainer) ? angular.element($element[0].querySelector($attrs.vsRepeatContainer)) : $element,
                             childClone = angular.element(childCloneHtml),
                             childTagName = childClone[0].tagName.toLowerCase(),
@@ -211,7 +216,7 @@
                             $beforeContent = angular.element('<' + childTagName + ' class="vs-repeat-before-content"></' + childTagName + '>'),
                             $afterContent = angular.element('<' + childTagName + ' class="vs-repeat-after-content"></' + childTagName + '>'),
                             autoSize = !$attrs.vsRepeat,
-                            sizesPropertyExists = !!$attrs.vsSize || !!$attrs.vsSizeProperty,
+                            sizesPropertyExists = $scope.vsSizeFn || !!$attrs.vsSize || !!$attrs.vsSizeProperty,
                             $scrollParent = $attrs.vsScrollParent ?
                                 $attrs.vsScrollParent === 'window' ? angular.element(window) :
                                 closestElement.call(repeatContainer, $attrs.vsScrollParent) : repeatContainer,
@@ -276,16 +281,23 @@
                             else {
                                 originalLength = originalCollection.length;
                                 if (sizesPropertyExists) {
-                                    $scope.sizes = originalCollection.map(function(item) {
-                                        var s = $scope.$new(false);
-                                        angular.extend(s, item);
-                                        s[lhs] = item;
-                                        var size = ($attrs.vsSize || $attrs.vsSizeProperty) ?
-                                                        s.$eval($attrs.vsSize || $attrs.vsSizeProperty) :
-                                                        $scope.elementSize;
-                                        s.$destroy();
-                                        return size;
-                                    });
+
+                                    if ($scope.vsSizeFn) {
+                                        $scope.sizes = originalCollection.map($scope.vsSizeFn);
+                                    } else {
+                                        $scope.sizes = originalCollection.map(function(item) {
+                                            var s = $scope.$new(false);
+                                            angular.extend(s, item);
+                                            s[lhs] = item;
+                                            var size = ($attrs.vsSize || $attrs.vsSizeProperty) ?
+                                                            s.$eval($attrs.vsSize || $attrs.vsSizeProperty) :
+                                                            $scope.elementSize;
+                                            s.$destroy();
+                                            return size;
+                                        });
+
+                                    }
+
                                     var sum = 0;
                                     $scope.sizesCumulative = $scope.sizes.map(function(size) {
                                         var res = sum;
