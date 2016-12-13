@@ -506,8 +506,10 @@
                                 $scrollPosition = 0;
                             }
 
+                            var overScroll = $scrollPosition + $clientSize;
+
                             if (sizesPropertyExists) {
-                                var overScroll = $scrollPosition + $clientSize - $scope.sizesCumulative[$scope.sizesCumulative.length - 1];
+                                overScroll -= $scope.sizesCumulative[$scope.sizesCumulative.length - 1];
                                 if (overScroll > 0) {
                                     $scrollPosition -= overScroll;
                                 }
@@ -535,6 +537,10 @@
                                 );
                             }
                             else {
+                                overScroll -= $scope.elementSize * originalLength;
+                                if (overScroll > 0) {
+                                    $scrollPosition -= overScroll;
+                                }
                                 __startIndex = Math.max(
                                     Math.floor(
                                         ($scrollPosition - $scope.offsetBefore - scrollOffset) / $scope.elementSize
