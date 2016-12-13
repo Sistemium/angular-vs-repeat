@@ -502,7 +502,15 @@
                             var __startIndex = $scope.startIndex;
                             var __endIndex = $scope.endIndex;
 
+                            if ($scrollPosition < 0) {
+                                $scrollPosition = 0;
+                            }
+
                             if (sizesPropertyExists) {
+                                var overScroll = $scrollPosition + $clientSize - $scope.sizesCumulative[$scope.sizesCumulative.length - 1];
+                                if (overScroll > 0) {
+                                    $scrollPosition -= overScroll;
+                                }
                                 __startIndex = 0;
                                 while ($scope.sizesCumulative[__startIndex] < $scrollPosition - $scope.offsetBefore - scrollOffset) {
                                     __startIndex++;
