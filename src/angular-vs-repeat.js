@@ -591,6 +591,7 @@
                             }
 
                             if (digestRequired) {
+
                                 $scope[collectionName] = originalCollection.slice($scope.startIndex, $scope.endIndex);
 
                                 // Emit the event
@@ -612,20 +613,27 @@
                                 _prevStartIndex = $scope.startIndex;
                                 _prevEndIndex = $scope.endIndex;
 
-                                var offsetCalculationString = sizesPropertyExists ?
-                                    '(sizesCumulative[$index + startIndex] + offsetBefore)' :
-                                    '(($index + startIndex) * elementSize + offsetBefore)';
+                                // var offsetCalculationString = sizesPropertyExists ?
+                                //     '(sizesCumulative[$index + startIndex] + offsetBefore)' :
+                                //     '(($index + startIndex) * elementSize + offsetBefore)';
 
-                                var parsed = $parse(offsetCalculationString);
-                                var o1 = parsed($scope, {$index: 0});
-                                var o2 = parsed($scope, {$index: $scope[collectionName].length});
-                                var total = $scope.totalSize;
+                                var beforeSize = beforeAfterSize($scope, 0);
+                                var afterSize = beforeAfterSize($scope, $scope[collectionName].length);
 
-                                $beforeContent.css(getLayoutProp(), o1 + 'px');
-                                $afterContent.css(getLayoutProp(), (total - o2) + 'px');
+                                $beforeContent.css(getLayoutProp(), beforeSize + 'px');
+                                $afterContent.css(getLayoutProp(), ($scope.totalSize - afterSize) + 'px');
                             }
 
                             return digestRequired;
+
+                            function beforeAfterSize(scope, $index) {
+
+                                var index = $index + scope.startIndex;
+
+                                return scope.offsetBefore +
+                                    (sizesPropertyExists ? scope.sizesCumulative[index] : index * scope.elementSize);
+
+                            }
                         }
                     }
                 };
