@@ -505,14 +505,18 @@
             var _prevClientSize;
 
             function reinitOnClientHeightChange() {
+
               var ch = getClientSize($scrollParent[0], clientSize);
+
               if (ch !== _prevClientSize) {
                 reinitialize();
                 if ($scope.$root && !$scope.$root.$$phase) {
                   $scope.$apply();
                 }
               }
+
               _prevClientSize = ch;
+
             }
 
             $scope.$watch(function () {
@@ -575,10 +579,13 @@
                 );
               }
               else {
+
                 overScroll -= $scope.elementSize * originalLength;
+
                 if (overScroll > 0) {
                   $scrollPosition -= overScroll;
                 }
+
                 __startIndex = Math.max(
                   Math.floor(
                     ($scrollPosition - $scope.offsetBefore - scrollOffset) / $scope.elementSize
@@ -592,6 +599,7 @@
                   ) + $scope.excess,
                   originalLength
                 );
+
               }
 
               _minStartIndex = Math.min(__startIndex, _minStartIndex);
@@ -613,17 +621,19 @@
               }
 
               if (!digestRequired) {
+
                 if ($$options.hunked) {
+
                   if (Math.abs($scope.startIndex - _prevStartIndex) >= $scope.excess / 2 ||
                     ($scope.startIndex === 0 && _prevStartIndex !== 0)) {
                     digestRequired = true;
-                  }
-                  else if (Math.abs($scope.endIndex - _prevEndIndex) >= $scope.excess / 2 ||
+                  } else if (Math.abs($scope.endIndex - _prevEndIndex) >= $scope.excess / 2 ||
                     ($scope.endIndex === originalLength && _prevEndIndex !== originalLength)) {
                     digestRequired = true;
                   }
-                }
-                else {
+
+                } else {
+
                   digestRequired = $scope.startIndex !== _prevStartIndex ||
                     $scope.endIndex !== _prevEndIndex;
                 }
@@ -635,13 +645,16 @@
 
                 // Emit the event
                 $scope.$emit('vsRepeatInnerCollectionUpdated', $scope.startIndex, $scope.endIndex, _prevStartIndex, _prevEndIndex);
+
                 var triggerIndex;
+
                 if ($attrs.vsScrolledToEnd) {
                   triggerIndex = originalCollection.length - ($scope.scrolledToEndOffset || 0);
                   if (($scope.endIndex >= triggerIndex && _prevEndIndex < triggerIndex) || (originalCollection.length && $scope.endIndex === originalCollection.length)) {
                     $scope.$eval($attrs.vsScrolledToEnd);
                   }
                 }
+
                 if ($attrs.vsScrolledToBeginning) {
                   triggerIndex = $scope.scrolledToBeginningOffset || 0;
                   if (($scope.startIndex <= triggerIndex && _prevStartIndex > $scope.startIndex)) {
@@ -673,6 +686,7 @@
                   (sizesPropertyExists ? scope.sizesCumulative[index] : index * scope.elementSize);
 
               }
+
             }
           }
         };
