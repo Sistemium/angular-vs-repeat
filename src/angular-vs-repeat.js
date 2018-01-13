@@ -132,15 +132,19 @@
     }
 
     function getScrollOffset(vsElement, scrollElement, isHorizontal) {
-        var vsPos = vsElement.getBoundingClientRect()[isHorizontal ? 'left' : 'top'];
-        var scrollPos = scrollElement === window ? 0 : scrollElement.getBoundingClientRect()[isHorizontal ? 'left' : 'top'];
-        var correction = vsPos - scrollPos +
-            (scrollElement === window ? getWindowScroll() : scrollElement)[isHorizontal ? 'scrollLeft' : 'scrollTop'];
 
-        return correction;
+        var startProp = isHorizontal ? 'left' : 'top';
+
+        var vsPos = vsElement.getBoundingClientRect()[startProp];
+
+        var scrollPos = scrollElement === window ? 0 : scrollElement.getBoundingClientRect()[startProp];
+        var scrollEl = scrollElement === window ? getWindowScroll() : scrollElement;
+
+        return vsPos - scrollPos + scrollEl[isHorizontal ? 'scrollLeft' : 'scrollTop'];
+
     }
 
-    var vsRepeatModule = angular.module('vs-repeat', []).directive('vsRepeat', ['$compile', '$parse', function($compile, $parse) {
+    var vsRepeatModule = angular.module('vs-repeat', []).directive('vsRepeat', ['$compile', '$parse', function($compile) {
         return {
             restrict: 'A',
             scope: true,
@@ -449,15 +453,22 @@
                             }
                         });
 
+                        function maxLength() {
+
+                          return sizesPropertyExists ?
+                            $scope.sizesCumulative[originalLength] :
+                            $scope.elementSize * originalLength;
+
+                        }
+
                         function reinitialize() {
+
                             _prevStartIndex = void 0;
                             _prevEndIndex = void 0;
                             _minStartIndex = originalLength;
                             _maxEndIndex = 0;
-                            updateTotalSize(sizesPropertyExists ?
-                                                $scope.sizesCumulative[originalLength] :
-                                                $scope.elementSize * originalLength
-                                            );
+
+                            updateTotalSize(maxLength());
                             updateInnerCollection();
 
                             $scope.$emit('vsRepeatReinitialized', $scope.startIndex, $scope.endIndex);
@@ -489,6 +500,7 @@
                         });
 
                         function updateInnerCollection() {
+
                             var $scrollPosition = getScrollPos($scrollParent[0], scrollPos);
                             var $clientSize = getClientSize($scrollParent[0], clientSize);
 
