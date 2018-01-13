@@ -3,7 +3,7 @@
 // Angular Virtual Scroll Repeat v1.1.7 2016/03/08
 //
 
-(function(window, angular) {
+(function (window, angular) {
   'use strict';
   /* jshint eqnull:true */
   /* jshint -W038 */
@@ -78,13 +78,13 @@
 
   var dde = document.documentElement,
     matchingFunction = dde.matches ? 'matches' :
-              dde.matchesSelector ? 'matchesSelector' :
-              dde.webkitMatches ? 'webkitMatches' :
-              dde.webkitMatchesSelector ? 'webkitMatchesSelector' :
-              dde.msMatches ? 'msMatches' :
+      dde.matchesSelector ? 'matchesSelector' :
+        dde.webkitMatches ? 'webkitMatches' :
+          dde.webkitMatchesSelector ? 'webkitMatchesSelector' :
+            dde.msMatches ? 'msMatches' :
               dde.msMatchesSelector ? 'msMatchesSelector' :
-              dde.mozMatches ? 'mozMatches' :
-              dde.mozMatchesSelector ? 'mozMatchesSelector' : null;
+                dde.mozMatches ? 'mozMatches' :
+                  dde.mozMatchesSelector ? 'mozMatchesSelector' : null;
 
   var closestElement = angular.element.prototype.closest || function (selector) {
     var el = this[0].parentNode;
@@ -144,11 +144,11 @@
 
   }
 
-  var vsRepeatModule = angular.module('vs-repeat', []).directive('vsRepeat', ['$compile', '$parse', function($compile) {
+  var vsRepeatModule = angular.module('vs-repeat', []).directive('vsRepeat', ['$compile', '$parse', function ($compile) {
     return {
       restrict: 'A',
       scope: true,
-      compile: function($element, $attrs) {
+      compile: function ($element, $attrs) {
         var repeatContainer = angular.isDefined($attrs.vsRepeatContainer) ? angular.element($element[0].querySelector($attrs.vsRepeatContainer)) : $element,
           ngRepeatChild = repeatContainer.children().eq(0),
           ngRepeatExpression,
@@ -199,7 +199,7 @@
         if (isNgRepeatStart) {
           var index = 0;
           var repeaterElement = repeatContainer.children().eq(0);
-          while(repeaterElement.attr('ng-repeat-end') == null && repeaterElement.attr('data-ng-repeat-end') == null) {
+          while (repeaterElement.attr('ng-repeat-end') == null && repeaterElement.attr('data-ng-repeat-end') == null) {
             index++;
             repeaterElement = repeatContainer.children().eq(index);
             childCloneHtml += repeaterElement[0].outerHTML;
@@ -208,9 +208,9 @@
 
         repeatContainer.empty();
         return {
-          pre: function($scope, $element, $attrs) {
+          pre: function ($scope, $element, $attrs) {
 
-            if ($attrs.vsSizeFn){
+            if ($attrs.vsSizeFn) {
               $scope.vsSizeFn = $scope.$eval($attrs.vsSizeFn);
             }
 
@@ -227,7 +227,7 @@
               sizesPropertyExists = $scope.vsSizeFn || !!$attrs.vsSize || !!$attrs.vsSizeProperty,
               $scrollParent = $attrs.vsScrollParent ?
                 $attrs.vsScrollParent === 'window' ? angular.element(window) :
-                closestElement.call(repeatContainer, $attrs.vsScrollParent) : repeatContainer,
+                  closestElement.call(repeatContainer, $attrs.vsScrollParent) : repeatContainer,
               $$options = 'vsOptions' in $attrs ? $scope.$eval($attrs.vsOptions) : {},
               clientSize = $$horizontal ? 'clientWidth' : 'clientHeight',
               offsetSize = $$horizontal ? 'offsetWidth' : 'offsetHeight',
@@ -262,9 +262,9 @@
               $afterContent.css('width', '100%');
             }
 
-            Object.keys(attributesDictionary).forEach(function(key) {
+            Object.keys(attributesDictionary).forEach(function (key) {
               if ($attrs[key]) {
-                $attrs.$observe(key, function(value) {
+                $attrs.$observe(key, function (value) {
                   // '+' serves for getting a number from the string as the attributes are always strings
                   $scope[attributesDictionary[key]] = +value;
                   reinitialize();
@@ -273,106 +273,130 @@
             });
 
 
-            $scope.$watchCollection(rhs, function(coll) {
+            $scope.$watchCollection(rhs, function (coll) {
               originalCollection = coll || [];
               refresh();
             });
 
-            function refresh() {
-              if (!originalCollection || originalCollection.length < 1) {
-                $scope[collectionName] = [];
-                originalLength = 0;
-                $scope.sizesCumulative = [0];
+            function sizeFn(item) {
+
+              var sizeExpr = $attrs.vsSize || $attrs.vsSizeProperty;
+
+              if (!sizeExpr) {
+                return $scope.elementSize;
               }
-              else {
+
+              var s = $scope.$new(false);
+
+              angular.extend(s, item);
+
+              s[lhs] = item;
+
+              var size = s.$eval(sizeExpr);
+
+              s.$destroy();
+
+              return size;
+
+            }
+
+            function refresh() {
+
+              if (!originalCollection || originalCollection.length < 1) {
+
+                originalLength = 0;
+
+                $scope[collectionName] = [];
+                $scope.sizesCumulative = [0];
+
+              } else {
+
                 originalLength = originalCollection.length;
+
                 if (sizesPropertyExists) {
 
-                  if ($scope.vsSizeFn) {
-                    $scope.sizes = originalCollection.map($scope.vsSizeFn);
-                  } else {
-                    $scope.sizes = originalCollection.map(function(item) {
-                      var s = $scope.$new(false);
-                      angular.extend(s, item);
-                      s[lhs] = item;
-                      var size = ($attrs.vsSize || $attrs.vsSizeProperty) ?
-                              s.$eval($attrs.vsSize || $attrs.vsSizeProperty) :
-                              $scope.elementSize;
-                      s.$destroy();
-                      return size;
-                    });
-
-                  }
+                  $scope.sizes = originalCollection.map($scope.vsSizeFn || sizeFn);
 
                   var sum = 0;
-                  $scope.sizesCumulative = $scope.sizes.map(function(size) {
+
+                  $scope.sizesCumulative = $scope.sizes.map(function (size) {
                     var res = sum;
                     sum += size;
                     return res;
                   });
+
                   $scope.sizesCumulative.push(sum);
-                }
-                else {
+
+                } else {
                   setAutoSize();
                 }
+
               }
 
               reinitialize();
+
             }
 
             function setAutoSize() {
-              if (autoSize) {
-                $scope.$$postDigest(function() {
-                  if (repeatContainer[0].offsetHeight || repeatContainer[0].offsetWidth) { // element is visible
-                    var children = repeatContainer.children(),
-                      i = 0,
-                      gotSomething = false,
-                      insideStartEndSequence = false;
 
-                    while (i < children.length) {
-                      if (children[i].attributes[originalNgRepeatAttr] != null || insideStartEndSequence) {
-                        if (!gotSomething) {
-                          $scope.elementSize = 0;
-                        }
+              if (!autoSize) {
+                return;
+              }
 
-                        gotSomething = true;
-                        if (children[i][offsetSize]) {
-                          $scope.elementSize += children[i][offsetSize];
-                        }
+              $scope.$$postDigest(function () {
 
-                        if (isNgRepeatStart) {
-                          if (children[i].attributes['ng-repeat-end'] != null || children[i].attributes['data-ng-repeat-end'] != null) {
-                            break;
-                          }
-                          else {
-                            insideStartEndSequence = true;
-                          }
-                        }
-                        else {
+                if (repeatContainer[0].offsetHeight || repeatContainer[0].offsetWidth) { // element is visible
+
+                  var children = repeatContainer.children(),
+                    i = 0,
+                    gotSomething = false,
+                    insideStartEndSequence = false;
+
+                  while (i < children.length) {
+                    if (children[i].attributes[originalNgRepeatAttr] != null || insideStartEndSequence) {
+                      if (!gotSomething) {
+                        $scope.elementSize = 0;
+                      }
+
+                      gotSomething = true;
+                      if (children[i][offsetSize]) {
+                        $scope.elementSize += children[i][offsetSize];
+                      }
+
+                      if (isNgRepeatStart) {
+                        if (children[i].attributes['ng-repeat-end'] != null || children[i].attributes['data-ng-repeat-end'] != null) {
                           break;
                         }
+                        else {
+                          insideStartEndSequence = true;
+                        }
                       }
-                      i++;
+                      else {
+                        break;
+                      }
                     }
+                    i++;
+                  }
 
-                    if (gotSomething) {
-                      reinitialize();
-                      autoSize = false;
-                      if ($scope.$root && !$scope.$root.$$phase) {
-                        $scope.$apply();
-                      }
+                  if (gotSomething) {
+                    reinitialize();
+                    autoSize = false;
+                    if ($scope.$root && !$scope.$root.$$phase) {
+                      $scope.$apply();
                     }
                   }
-                  else {
-                    var dereg = $scope.$watch(function() {
-                      if (repeatContainer[0].offsetHeight || repeatContainer[0].offsetWidth) {
-                        dereg();
-                        setAutoSize();
-                      }
-                    });
-                  }
-                });
-              }
+
+                } else {
+                  var dereg = $scope.$watch(function () {
+                    if (repeatContainer[0].offsetHeight || repeatContainer[0].offsetWidth) {
+                      dereg();
+                      setAutoSize();
+                    }
+                  });
+                }
+
+              });
+
             }
 
             function getLayoutProp() {
@@ -414,14 +438,14 @@
             }
 
             angular.element(window).on('resize', onWindowResize);
-            $scope.$on('$destroy', function() {
+            $scope.$on('$destroy', function () {
               angular.element(window).off('resize', onWindowResize);
               $scrollParent.off('scroll', scrollHandler);
             });
 
             $scope.$on('vsRepeatTrigger', refresh);
 
-            $scope.$on('vsRepeatResize', function() {
+            $scope.$on('vsRepeatResize', function () {
               autoSize = true;
               setAutoSize();
             });
@@ -431,9 +455,9 @@
               _minStartIndex,
               _maxEndIndex;
 
-            $scope.$on('vsRenderAll', function() {//e , quantum) {
-              if($$options.latch) {
-                setTimeout(function() {
+            $scope.$on('vsRenderAll', function () {//e , quantum) {
+              if ($$options.latch) {
+                setTimeout(function () {
                   // var __endIndex = Math.min($scope.endIndex + (quantum || 1), originalLength);
                   var __endIndex = originalLength;
                   _maxEndIndex = Math.max(__endIndex, _maxEndIndex);
@@ -441,23 +465,23 @@
                   $scope[collectionName] = originalCollection.slice($scope.startIndex, $scope.endIndex);
                   _prevEndIndex = $scope.endIndex;
 
-                  $scope.$$postDigest(function() {
+                  $scope.$$postDigest(function () {
                     $beforeContent.css(getLayoutProp(), 0);
                     $afterContent.css(getLayoutProp(), 0);
                   });
 
-                  $scope.$apply(function() {
+                  $scope.$apply(function () {
                     $scope.$emit('vsRenderAllDone');
                   });
                 });
               }
             });
 
-            function maxLength() {
+            function maxLength(length) {
 
               return sizesPropertyExists ?
-              $scope.sizesCumulative[originalLength] :
-              $scope.elementSize * originalLength;
+                $scope.sizesCumulative[length] :
+                $scope.elementSize * length;
 
             }
 
@@ -468,7 +492,7 @@
               _minStartIndex = originalLength;
               _maxEndIndex = 0;
 
-              updateTotalSize(maxLength());
+              updateTotalSize(maxLength(originalLength));
               updateInnerCollection();
 
               $scope.$emit('vsRepeatReinitialized', $scope.startIndex, $scope.endIndex);
@@ -479,6 +503,7 @@
             }
 
             var _prevClientSize;
+
             function reinitOnClientHeightChange() {
               var ch = getClientSize($scrollParent[0], clientSize);
               if (ch !== _prevClientSize) {
@@ -490,7 +515,7 @@
               _prevClientSize = ch;
             }
 
-            $scope.$watch(function() {
+            $scope.$watch(function () {
               if (typeof window.requestAnimationFrame === 'function') {
                 window.requestAnimationFrame(reinitOnClientHeightChange);
               }
@@ -505,10 +530,10 @@
               var $clientSize = getClientSize($scrollParent[0], clientSize);
 
               var scrollOffset = repeatContainer[0] === $scrollParent[0] ? 0 : getScrollOffset(
-                          repeatContainer[0],
-                          $scrollParent[0],
-                          $$horizontal
-                        );
+                repeatContainer[0],
+                $scrollParent[0],
+                $$horizontal
+              );
 
               var __startIndex = $scope.startIndex;
               var __endIndex = $scope.endIndex;
@@ -528,7 +553,9 @@
                 while ($scope.sizesCumulative[__startIndex] < $scrollPosition - $scope.offsetBefore - scrollOffset) {
                   __startIndex++;
                 }
-                if (__startIndex > 0) { __startIndex--; }
+                if (__startIndex > 0) {
+                  __startIndex--;
+                }
 
                 // Adjust the start index according to the excess
                 __startIndex = Math.max(
@@ -561,7 +588,7 @@
 
                 __endIndex = Math.min(
                   __startIndex + Math.ceil(
-                    $clientSize / $scope.elementSize
+                  $clientSize / $scope.elementSize
                   ) + $scope.excess,
                   originalLength
                 );
@@ -598,7 +625,7 @@
                 }
                 else {
                   digestRequired = $scope.startIndex !== _prevStartIndex ||
-                            $scope.endIndex !== _prevEndIndex;
+                    $scope.endIndex !== _prevEndIndex;
                 }
               }
 
