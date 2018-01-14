@@ -76,31 +76,6 @@
   // - 'vsRepeatTrigger' - an event the directive listens for to manually trigger reinitialization
   // - 'vsRepeatReinitialized' - an event the directive emits upon reinitialization done
 
-  var dde = document.documentElement,
-    matchingFunction = dde.matches ? 'matches' :
-      dde.matchesSelector ? 'matchesSelector' :
-        dde.webkitMatches ? 'webkitMatches' :
-          dde.webkitMatchesSelector ? 'webkitMatchesSelector' :
-            dde.msMatches ? 'msMatches' :
-              dde.msMatchesSelector ? 'msMatchesSelector' :
-                dde.mozMatches ? 'mozMatches' :
-                  dde.mozMatchesSelector ? 'mozMatchesSelector' : null;
-
-  var closestElement = angular.element.prototype.closest || function (selector) {
-    var el = this[0].parentNode;
-    while (el !== document.documentElement && el != null && !el[matchingFunction](selector)) {
-      el = el.parentNode;
-    }
-
-    if (el && el[matchingFunction](selector)) {
-      return angular.element(el);
-    }
-    else {
-      return angular.element();
-    }
-  };
-
-
   function vsRepeatDirective($compile) {
 
     return {
@@ -112,9 +87,13 @@
     };
 
     function vsRepeatDirectiveCompile($element, $attrs) {
-      var repeatContainer = angular.isDefined($attrs.vsRepeatContainer) ? angular.element($element[0].querySelector($attrs.vsRepeatContainer)) : $element,
+
+      var repeatContainer = angular.isDefined($attrs.vsRepeatContainer) ?
+        angular.element($element[0].querySelector($attrs.vsRepeatContainer)) : $element;
+
+      var
         ngRepeatChild = repeatContainer.children().eq(0),
-        ngRepeatExpression,
+        ngRepeatExpression = '',
         childCloneHtml = ngRepeatChild[0].outerHTML,
         expressionMatches,
         lhs,
@@ -132,25 +111,12 @@
           'vsExcess': 'excess'
         };
 
-      if (ngRepeatChild.attr('ng-repeat')) {
-        originalNgRepeatAttr = 'ng-repeat';
-        ngRepeatExpression = ngRepeatChild.attr('ng-repeat');
-      }
-      else if (ngRepeatChild.attr('data-ng-repeat')) {
-        originalNgRepeatAttr = 'data-ng-repeat';
-        ngRepeatExpression = ngRepeatChild.attr('data-ng-repeat');
-      }
-      else if (ngRepeatChild.attr('ng-repeat-start')) {
-        isNgRepeatStart = true;
-        originalNgRepeatAttr = 'ng-repeat-start';
-        ngRepeatExpression = ngRepeatChild.attr('ng-repeat-start');
-      }
-      else if (ngRepeatChild.attr('data-ng-repeat-start')) {
-        isNgRepeatStart = true;
-        originalNgRepeatAttr = 'data-ng-repeat-start';
-        ngRepeatExpression = ngRepeatChild.attr('data-ng-repeat-start');
-      }
-      else {
+      if (
+        detectNoRepeatExpression('ng-repeat') &&
+        detectNoRepeatExpression('data-ng-repeat') &&
+        detectNoRepeatExpression('ng-repeat-start') &&
+        detectNoRepeatExpression('data-ng-repeat-start')
+      ) {
         throw new Error('angular-vs-repeat: no ng-repeat directive on a child element');
       }
 
@@ -160,13 +126,7 @@
       rhsSuffix = expressionMatches[3];
 
       if (isNgRepeatStart) {
-        var index = 0;
-        var repeaterElement = repeatContainer.children().eq(0);
-        while (repeaterElement.attr('ng-repeat-end') == null && repeaterElement.attr('data-ng-repeat-end') == null) {
-          index++;
-          repeaterElement = repeatContainer.children().eq(index);
-          childCloneHtml += repeaterElement[0].outerHTML;
-        }
+        grabRepeatedElements();
       }
 
       repeatContainer.empty();
@@ -179,7 +139,10 @@
           $scope.vsSizeFn = $scope.$eval($attrs.vsSizeFn);
         }
 
-        var repeatContainer = angular.isDefined($attrs.vsRepeatContainer) ? angular.element($element[0].querySelector($attrs.vsRepeatContainer)) : $element,
+        var repeatContainer = angular.isDefined($attrs.vsRepeatContainer) ?
+          angular.element($element[0].querySelector($attrs.vsRepeatContainer)) : $element;
+
+        var
           childClone = angular.element(childCloneHtml),
           childTagName = childClone[0].tagName.toLowerCase(),
           beforeTagName = $attrs.beforeTagName || childTagName,
@@ -199,6 +162,7 @@
           scrollPos = $$horizontal ? 'scrollLeft' : 'scrollTop';
 
         $scope.totalSize = 0;
+
         if (!('vsSize' in $attrs) && 'vsSizeProperty' in $attrs) {
           console.warn('vs-size-property attribute is deprecated. Please use vs-size attribute which also accepts angular expressions.');
         }
@@ -221,8 +185,7 @@
         if ($$horizontal) {
           $beforeContent.css('height', '100%');
           $afterContent.css('height', '100%');
-        }
-        else {
+        } else {
           $beforeContent.css('width', '100%');
           $afterContent.css('width', '100%');
         }
@@ -242,6 +205,56 @@
           originalCollection = coll || [];
           refresh();
         });
+
+        childClone.eq(0).attr(originalNgRepeatAttr, lhs + ' in ' + collectionName + (rhsSuffix ? ' ' + rhsSuffix : ''));
+        childClone.addClass('vs-repeat-repeated-element');
+
+        repeatContainer.append($beforeContent);
+        repeatContainer.append(childClone);
+        $compile(childClone)($scope);
+        repeatContainer.append($afterContent);
+
+        $scope.startIndex = 0;
+        $scope.endIndex = 0;
+
+        $scrollParent.on('scroll', scrollHandler);
+
+        angular.element(window).on('resize', onWindowResize);
+
+        $scope.$on('$destroy', function () {
+          angular.element(window).off('resize', onWindowResize);
+          $scrollParent.off('scroll', scrollHandler);
+        });
+
+        $scope.$on('vsRepeatTrigger', refresh);
+
+        $scope.$on('vsRepeatResize', function () {
+          autoSize = true;
+          setAutoSize();
+        });
+
+        var _prevStartIndex,
+          _prevEndIndex,
+          _minStartIndex,
+          _maxEndIndex;
+
+        $scope.$on('vsRenderAll', vsRenderAll);
+
+        var _prevClientSize;
+
+        $scope.$watch(function () {
+          if (typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(reinitOnClientHeightChange);
+          } else {
+            reinitOnClientHeightChange();
+          }
+        });
+
+
+        /*
+        Functions
+         */
+
 
         function sizeFn(item) {
 
@@ -370,57 +383,7 @@
           return layoutProp;
         }
 
-        childClone.eq(0).attr(originalNgRepeatAttr, lhs + ' in ' + collectionName + (rhsSuffix ? ' ' + rhsSuffix : ''));
-        childClone.addClass('vs-repeat-repeated-element');
-
-        repeatContainer.append($beforeContent);
-        repeatContainer.append(childClone);
-        $compile(childClone)($scope);
-        repeatContainer.append($afterContent);
-
-        $scope.startIndex = 0;
-        $scope.endIndex = 0;
-
-        function scrollHandler() {
-          if (updateInnerCollection()) {
-            $scope.$digest();
-          }
-        }
-
-        $scrollParent.on('scroll', scrollHandler);
-
-        function onWindowResize() {
-          if (typeof $attrs.vsAutoresize !== 'undefined') {
-            autoSize = true;
-            setAutoSize();
-            if ($scope.$root && !$scope.$root.$$phase) {
-              $scope.$apply();
-            }
-          }
-          if (updateInnerCollection()) {
-            $scope.$apply();
-          }
-        }
-
-        angular.element(window).on('resize', onWindowResize);
-        $scope.$on('$destroy', function () {
-          angular.element(window).off('resize', onWindowResize);
-          $scrollParent.off('scroll', scrollHandler);
-        });
-
-        $scope.$on('vsRepeatTrigger', refresh);
-
-        $scope.$on('vsRepeatResize', function () {
-          autoSize = true;
-          setAutoSize();
-        });
-
-        var _prevStartIndex,
-          _prevEndIndex,
-          _minStartIndex,
-          _maxEndIndex;
-
-        $scope.$on('vsRenderAll', function () {//e , quantum) {
+        function vsRenderAll() {//e , quantum) {
           if ($$options.latch) {
             setTimeout(function () {
               // var __endIndex = Math.min($scope.endIndex + (quantum || 1), originalLength);
@@ -440,7 +403,26 @@
               });
             });
           }
-        });
+        }
+
+        function scrollHandler() {
+          if (updateInnerCollection()) {
+            $scope.$digest();
+          }
+        }
+
+        function onWindowResize() {
+          if (typeof $attrs.vsAutoresize !== 'undefined') {
+            autoSize = true;
+            setAutoSize();
+            if ($scope.$root && !$scope.$root.$$phase) {
+              $scope.$apply();
+            }
+          }
+          if (updateInnerCollection()) {
+            $scope.$apply();
+          }
+        }
 
         function maxLength(length) {
 
@@ -467,8 +449,6 @@
           $scope.totalSize = $scope.offsetBefore + size + $scope.offsetAfter;
         }
 
-        var _prevClientSize;
-
         function reinitOnClientHeightChange() {
 
           var ch = getClientSize($scrollParent[0], clientSize);
@@ -483,15 +463,6 @@
           _prevClientSize = ch;
 
         }
-
-        $scope.$watch(function () {
-          if (typeof window.requestAnimationFrame === 'function') {
-            window.requestAnimationFrame(reinitOnClientHeightChange);
-          }
-          else {
-            reinitOnClientHeightChange();
-          }
-        });
 
         function updateInnerCollection() {
 
@@ -653,8 +624,30 @@
           }
 
         }
+
       }
-      
+
+      function detectNoRepeatExpression(attr) {
+
+        if (!ngRepeatChild.attr(attr)) return true;
+
+        originalNgRepeatAttr = attr;
+        ngRepeatExpression = ngRepeatChild.attr(attr);
+        isNgRepeatStart = attr.match(/start$/);
+
+      }
+
+      function grabRepeatedElements() {
+        var index = 0;
+        var repeaterElement = repeatContainer.children().eq(0);
+
+        while (repeaterElement.attr('ng-repeat-end') == null && repeaterElement.attr('data-ng-repeat-end') == null) {
+          index++;
+          repeaterElement = repeatContainer.children().eq(index);
+          childCloneHtml += repeaterElement[0].outerHTML;
+        }
+      }
+
     }
 
   }
@@ -666,23 +659,24 @@
         scrollTop: pageYOffset,
         scrollLeft: pageXOffset
       };
-    }
-    else {
+    } else {
+
       var sx, sy, d = document, r = d.documentElement, b = d.body;
       sx = r.scrollLeft || b.scrollLeft || 0;
       sy = r.scrollTop || b.scrollTop || 0;
+
       return {
         scrollTop: sy,
         scrollLeft: sx
       };
+
     }
   }
 
   function getClientSize(element, sizeProp) {
     if (element === window) {
       return sizeProp === 'clientWidth' ? window.innerWidth : window.innerHeight;
-    }
-    else {
+    } else {
       return element[sizeProp];
     }
   }
@@ -704,6 +698,34 @@
 
   }
 
+  function closestElement() {
+
+    var dde = document.documentElement,
+      matchingFunction = dde.matches ? 'matches' :
+        dde.matchesSelector ? 'matchesSelector' :
+          dde.webkitMatches ? 'webkitMatches' :
+            dde.webkitMatchesSelector ? 'webkitMatchesSelector' :
+              dde.msMatches ? 'msMatches' :
+                dde.msMatchesSelector ? 'msMatchesSelector' :
+                  dde.mozMatches ? 'mozMatches' :
+                    dde.mozMatchesSelector ? 'mozMatchesSelector' : null;
+
+    return angular.element.prototype.closest || function (selector) {
+      var el = this[0].parentNode;
+      while (el !== document.documentElement && el != null && !el[matchingFunction](selector)) {
+        el = el.parentNode;
+      }
+
+      if (el && el[matchingFunction](selector)) {
+        return angular.element(el);
+      }
+      else {
+        return angular.element();
+      }
+    };
+
+  }
+
   var vsRepeatModule = angular.module('vs-repeat', [])
     .directive('vsRepeat', ['$compile', '$parse', vsRepeatDirective]);
 
@@ -711,4 +733,5 @@
     module.exports = vsRepeatModule.name;
   }
 
-})(window, window.angular);
+})
+(window, window.angular);
