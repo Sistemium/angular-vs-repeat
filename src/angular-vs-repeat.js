@@ -425,9 +425,9 @@
         }
 
         function scrollHandler() {
-          if (updateInnerCollection()) {
-            $scope.$digest();
-          }
+          // if (updateInnerCollection()) {
+            $scope.$applyAsync(updateInnerCollection);
+          // }
         }
 
         function onWindowResize() {
@@ -504,36 +504,10 @@
           var overScroll = $scrollPosition + $clientSize;
 
           if (sizesPropertyExists) {
-            overScroll -= $scope.sizesCumulative[$scope.sizesCumulative.length - 1];
-            if (overScroll > 0) {
-              $scrollPosition -= overScroll;
-            }
-            __startIndex = 0;
-            while ($scope.sizesCumulative[__startIndex] < $scrollPosition - $scope.offsetBefore - scrollOffset) {
-              __startIndex++;
-            }
-            if (__startIndex > 0) {
-              __startIndex--;
-            }
 
-            // Adjust the start index according to the excess
-            __startIndex = Math.max(
-              Math.floor(__startIndex - $scope.excess / 2),
-              0
-            );
+            setBySizes();
 
-            __endIndex = __startIndex;
-            while ($scope.sizesCumulative[__endIndex] < $scrollPosition - $scope.offsetBefore - scrollOffset + $clientSize) {
-              __endIndex++;
-            }
-
-            // Adjust the end index according to the excess
-            __endIndex = Math.min(
-              Math.ceil(__endIndex + $scope.excess / 2),
-              originalLength
-            );
-          }
-          else {
+          } else {
 
             overScroll -= $scope.elementSize * originalLength;
 
@@ -544,14 +518,13 @@
             __startIndex = Math.max(
               Math.floor(
                 ($scrollPosition - $scope.offsetBefore - scrollOffset) / $scope.elementSize
-              ) - $scope.excess / 2,
+                - $scope.excess
+              ),
               0
             );
 
             __endIndex = Math.min(
-              __startIndex + Math.ceil(
-              $clientSize / $scope.elementSize
-              ) + $scope.excess,
+              __startIndex + Math.ceil($clientSize / $scope.elementSize) + $scope.excess * 2,
               originalLength
             );
 
@@ -579,10 +552,10 @@
 
             if ($$options.hunked) {
 
-              if (Math.abs($scope.startIndex - _prevStartIndex) >= $scope.excess / 2 ||
+              if (Math.abs($scope.startIndex - _prevStartIndex) >= $scope.excess ||
                 ($scope.startIndex === 0 && _prevStartIndex !== 0)) {
                 digestRequired = true;
-              } else if (Math.abs($scope.endIndex - _prevEndIndex) >= $scope.excess / 2 ||
+              } else if (Math.abs($scope.endIndex - _prevEndIndex) >= $scope.excess ||
                 ($scope.endIndex === originalLength && _prevEndIndex !== originalLength)) {
                 digestRequired = true;
               }
@@ -631,6 +604,43 @@
           }
 
           return digestRequired;
+
+          function setBySizes() {
+
+            overScroll -= $scope.sizesCumulative[$scope.sizesCumulative.length - 1];
+
+            if (overScroll > 0) {
+              $scrollPosition -= overScroll;
+            }
+
+            __startIndex = 0;
+
+            while ($scope.sizesCumulative[__startIndex] < $scrollPosition - $scope.offsetBefore - scrollOffset) {
+              __startIndex++;
+            }
+
+            if (__startIndex > 0) {
+              __startIndex--;
+            }
+
+            // Adjust the start index according to the excess
+            __startIndex = Math.max(
+              Math.floor(__startIndex - $scope.excess),
+              0
+            );
+
+            __endIndex = __startIndex;
+            while ($scope.sizesCumulative[__endIndex] < $scrollPosition - $scope.offsetBefore - scrollOffset + $clientSize) {
+              __endIndex++;
+            }
+
+            // Adjust the end index according to the excess
+            __endIndex = Math.min(
+              Math.ceil(__endIndex + $scope.excess),
+              originalLength
+            );
+
+          }
 
           function beforeAfterSize(scope, $index) {
 
