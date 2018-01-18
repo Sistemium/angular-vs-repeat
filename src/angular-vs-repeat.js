@@ -76,6 +76,16 @@
   // - 'vsRepeatTrigger' - an event the directive listens for to manually trigger reinitialization
   // - 'vsRepeatReinitialized' - an event the directive emits upon reinitialization done
 
+  var isChrome = false;
+
+  if (window.UAParser) {
+    var ua = new UAParser();
+    var browser = ua.getBrowser();
+    if (browser.name === 'Chrome') {
+      isChrome = true;
+    }
+  }
+
   function vsRepeatDirective($compile) {
 
     return {
@@ -425,9 +435,13 @@
         }
 
         function scrollHandler() {
-          // if (updateInnerCollection()) {
-            $scope.$applyAsync(updateInnerCollection);
-          // }
+          if (updateInnerCollection()) {
+            if (isChrome) {
+              $scope.$digest();
+            } else {
+              $scope.$evalAsync();
+            }
+          }
         }
 
         function onWindowResize() {
